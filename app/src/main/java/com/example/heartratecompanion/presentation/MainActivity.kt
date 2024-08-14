@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
     fun HeartRateRecordingScreen() {
         var isRecording by remember { mutableStateOf(false) }
         var heartRate by remember { mutableStateOf(0f) }
+        var dataSentCount by remember { mutableStateOf(0) }
 
         heartRateDataService.setOnHeartRateDataListener { newHeartRate ->
             heartRate = newHeartRate
@@ -107,17 +108,22 @@ class MainActivity : ComponentActivity() {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+
             ) {
                 if (isRecording && isConnected) {
                     Text(text = "Heart Rate: $heartRate")
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(8.dp),
+                    )
                     // Stop recording
                     Button(onClick = {
                         isRecording = false
                         heartRateDataService.stopHeartRateMonitoring()
                         dataTransmissionService.stopDataTransmission()
-                    }) {
+                    },
+                        Modifier.padding(8.dp),
+                        ) {
                         Text(text = "Stop")
                     }
                     LaunchedEffect(key1 = isRecording) { // Only launch when isRecording changes
@@ -125,6 +131,13 @@ class MainActivity : ComponentActivity() {
                             snapshotFlow { heartRate }
                                 .collect { hr ->
                                     dataTransmissionService.sendHeartRateData(hr)
+                                    dataSentCount++
+                                    if (dataSentCount >= 187) {
+                                        isRecording = false
+                                        heartRateDataService.stopHeartRateMonitoring()
+                                        dataTransmissionService.stopDataTransmission()
+                                        dataSentCount = 0
+                                    }
                                 }
                         }
                     }
